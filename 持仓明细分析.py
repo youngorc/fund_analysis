@@ -25,17 +25,16 @@ def get_fund_cc(fund_code):
         ,'topline': '20'
         ,'year': year}
     r=requests.get(url,params=params)
-    a=re.findall("</a><a href='//quote.eastmoney.com/(.*?)\.html' >行情",r.text)
-    df_code=pd.DataFrame({"代码":a}).drop_duplicates()
-    df_code["代码"]=df_code["代码"].astype("str").str.replace("/","")
-    df_code["股票代码"]=df_code["代码"].apply(lambda x:re.search("\d+",x).group() if (re.search("\d+",x)) !=None else x)
-    df_code["股票代码"]=df_code["股票代码"].astype("str").str.rjust(6,"0")
-    df=pd.read_html(r.text)[0]
-    df["股票代码"]=df["股票代码"].astype("str").str.rjust(6,"0")
-    df_cc=pd.merge(left=df,right=df_code,on="股票代码",how="left")
-    df_cc["日期"]=datetime.datetime.today().strftime("%Y-%m-%d")
-    df_cc["基金"]=fund_code
-    return df_cc
+    # a=re.findall("</a><a href='//quote.eastmoney.com/(.*?)\.html' >行情",r.text)
+    tree=etree.HTML(r.text)
+    table=tree.xpath("//table")[0]
+    code_list=table.xpath("./tbody/tr/td[2]//text()")
+    df_code=pd.read_html(r.text)[0]
+    df_code["股票代码"]=code_list
+    df_code["代码"]=df_code["股票代码"].apply(lambda x:'hk'+x if len(x)==5 else 'sh'+x if x.startswith('6') else 'sz'+x)
+    df_code["日期"]=datetime.datetime.today().strftime("%Y-%m-%d")
+    df_code["基金"]=fund_code
+    return df_code
 
 # def get_quote_pe_pb(quote_code):
 #     '''根据股票代码从亿牛网爬取滚动pe/pb'''
